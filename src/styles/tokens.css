@@ -1,0 +1,97 @@
+/* Design tokens. Components use only these variables, never literal colours. */
+:root {
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', var(--font-locale, sans-serif), sans-serif;
+
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px;
+  --radius-1: 2px; --radius-2: 4px; --radius-3: 8px;
+  --text-xs: 11px; --text-sm: 12.5px; --text-md: 14px; --text-lg: 17px; --text-xl: 22px;
+  --dur-fast: 120ms; --dur-med: 220ms; --packet-ms: 900ms;
+  --grid-size: 28px;
+  color-scheme: dark;
+
+  /* Dark blueprint (default) */
+  --bg: #08111f;
+  --bg-grid: rgba(86, 156, 214, 0.07);
+  --surface: #0c1828;
+  --surface-2: #10203a;
+  --surface-3: #16294a;
+  --line: #1f3657;
+  --line-strong: #2f5486;
+  --text: #dce8f7;
+  --muted: #8aa1bf;
+  --faint: #56708f;
+  --accent: #3d8bff;
+  --accent-2: #5fd4ff;
+  --accent-text: #ffffff;
+  --accent-soft: rgba(61, 139, 255, 0.16);
+  --focus: #7cc4ff;
+  --ok: #3ddc97;
+  --warn: #ffc857;
+  --danger: #ff6b7a;
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  --icon-stroke: #7fb8ff;
+  --icon-fill: #10233f;
+  --icon-fill-2: #183660;
+
+  /* Protocol family colours (AA on --surface for text and on --bg for marks) */
+  --fam-web: #5fa8ff;
+  --fam-transport: #3ddc97;
+  --fam-network: #9b8cff;
+  --fam-naming: #ffc857;
+  --fam-mail: #ff9f6b;
+  --fam-file: #c3a6ff;
+  --fam-remote: #6be4d4;
+  --fam-security: #ff7eb6;
+  --fam-wireless: #7fd8ff;
+  --fam-proxy: #e5a55f;
+  --fam-vpn: #a8e063;
+  --fam-realtime: #ff8f8f;
+  --fam-infra: #b8c7dc;
+  --fam-ai: #d58bff;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #eef3fa;
+  --bg-grid: rgba(37, 99, 190, 0.08);
+  --surface: #ffffff;
+  --surface-2: #f3f7fd;
+  --surface-3: #e6eef9;
+  --line: #cfdcee;
+  --line-strong: #93b2db;
+  --text: #0e1c30;
+  --muted: #4b6283;
+  --faint: #7a8fab;
+  --accent: #1f6fe5;
+  --accent-2: #0b8fbf;
+  --accent-text: #ffffff;
+  --accent-soft: rgba(31, 111, 229, 0.12);
+  --focus: #1f6fe5;
+  --ok: #0f8a57;
+  --warn: #9a6400;
+  --danger: #c4283b;
+  --shadow: 0 8px 24px rgba(16, 40, 80, 0.12);
+  --icon-stroke: #2563be;
+  --icon-fill: #ffffff;
+  --icon-fill-2: #e3edfb;
+
+  --fam-web: #1f6fe5;
+  --fam-transport: #0f8a57;
+  --fam-network: #5b4bd6;
+  --fam-naming: #9a6400;
+  --fam-mail: #c25010;
+  --fam-file: #7a4fd0;
+  --fam-remote: #0b7f73;
+  --fam-security: #c42a78;
+  --fam-wireless: #0b78a8;
+  --fam-proxy: #965a10;
+  --fam-vpn: #4c7d0e;
+  --fam-realtime: #c4283b;
+  --fam-infra: #4b6283;
+  --fam-ai: #9b2fd0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 0ms; --dur-med: 0ms; }
+}
