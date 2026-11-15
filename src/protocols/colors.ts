@@ -16,6 +16,7 @@ const PROTO_FAMILY: Record<string, Family> = {
   WebSocket: 'realtime', STUN: 'realtime', ICE: 'realtime', DTLS: 'realtime', SRTP: 'realtime', SDP: 'realtime',
   NTP: 'infra', BGP: 'infra', Modbus: 'infra',
   MCP: 'ai', 'JSON-RPC': 'ai', A2A: 'ai', LLM: 'ai', Embed: 'ai', Vector: 'ai', Tool: 'ai', Index: 'ai',
+  Task: 'ai', Result: 'ai', Text: 'ai', Tokens: 'ai', Vectors: 'ai', Logits: 'ai', Token: 'ai',
 };
 
 export function packetFamily(proto: string, p: Protocol): Family {

@@ -16,6 +16,8 @@ export function protocolKeys(p: Protocol): Messages {
     out[`p.${p.id}.s${i + 1}.t`] = title;
     out[`p.${p.id}.s${i + 1}.d`] = sub;
   });
+  (p.text.notes ?? []).forEach((note, i) => (out[`p.${p.id}.m${i + 1}`] = note));
+  (p.text.ideas ?? []).forEach((idea, i) => (out[`p.${p.id}.k${i + 1}`] = idea));
   return out;
 }
 

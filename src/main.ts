@@ -5,6 +5,7 @@ import '@fontsource/jetbrains-mono/700.css';
 import '@fontsource/jetbrains-mono/500-italic.css';
 import './styles/tokens.css';
 import './styles/app.css';
+import './styles/lessons.css';
 import { startApp } from './app';
 
 const root = document.getElementById('app');

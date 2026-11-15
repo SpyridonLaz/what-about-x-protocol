@@ -95,17 +95,33 @@ export function NetworkView(container: HTMLElement, ctx: ViewCtx): () => void {
   const ys = p.nodes.map((nd) => nodeCenter(nd)[1]);
   const x0 = Math.min(...xs) - 95;
   const x1 = Math.max(...xs) + 95;
-  const y0 = Math.min(...ys) - 62;
+  const y0 = Math.min(...ys) - (p.zones?.length ? 80 : 62);
   const y1 = Math.max(...ys) + 58;
 
   const svg = s('svg', { class: 'net', viewBox: `${x0} ${y0} ${x1 - x0} ${y1 - y0}`, role: 'img', 'aria-label': t('ui.network'), dir: 'ltr' });
   svg.append(isoFloor(x0, y0, x1 - x0, y1 - y0));
+  const zoneLayer = s('g', { class: 'net-zones', 'aria-hidden': 'true' });
+  // Zones: a dashed frame around the nodes that belong together (who runs what).
+  for (const z of p.zones ?? []) {
+    const cs = z.nodes.map((id) => byId.get(id)).filter((nd): nd is PNode => !!nd).map(nodeCenter);
+    if (!cs.length) continue;
+    const zx0 = Math.min(...cs.map((c) => c[0])) - 84;
+    const zx1 = Math.max(...cs.map((c) => c[0])) + 84;
+    const zy0 = Math.min(...cs.map((c) => c[1])) - 56;
+    const zy1 = Math.max(...cs.map((c) => c[1])) + 56;
+    zoneLayer.append(
+      s('rect', { class: 'net-zone', x: zx0, y: zy0, width: zx1 - zx0, height: zy1 - zy0, rx: 10 }),
+      s('text', { class: 'net-zone-label', x: zx0 + 6, y: zy0 - 7 }, caps(t(`zone.${z.label}`))),
+    );
+  }
   const linkLayer = s('g', { class: 'net-links' });
   const nodeLayer = s('g', { class: 'net-nodes' });
   const pktLayer = s('g', { class: 'net-packets' });
-  svg.append(linkLayer, nodeLayer, pktLayer);
+  svg.append(zoneLayer, linkLayer, nodeLayer, pktLayer);
 
   const linkEls = new Map<string, SVGLineElement>();
+  /** Node id each line starts at (x1,y1). */
+  const linkDir = new Map<SVGLineElement, string>();
   const key = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
   for (const [a, b] of p.links) {
     const na = byId.get(a);
@@ -115,13 +131,15 @@ export function NetworkView(container: HTMLElement, ctx: ViewCtx): () => void {
     const [x2, y2] = nodeCenter(nb);
     const line = s('line', { class: 'net-link', x1, y1, x2, y2 });
     linkEls.set(key(a, b), line);
+    linkDir.set(line, a);
     linkLayer.append(line);
   }
 
   const nodeEls = new Map<string, SVGGElement>();
   for (const nd of p.nodes) {
     const [cx, cy] = nodeCenter(nd);
-    const g = s('g', { class: 'net-node', transform: `translate(${cx} ${cy})` });
+    const g = s('g', { class: `net-node kind-${nd.kind}`, transform: `translate(${cx} ${cy})` });
+    g.append(s('circle', { class: 'net-ring', cx: 0, cy: -8, r: 30 }));
     const ic = svgFromString(nodeIcon(nd.kind));
     ic.setAttribute('x', '-34');
     ic.setAttribute('y', '-44');
@@ -137,7 +155,10 @@ export function NetworkView(container: HTMLElement, ctx: ViewCtx): () => void {
   const halo = s('circle', { class: 'net-packet-halo', r: 14 });
   const tag = s('text', { class: 'net-packet-tag', 'text-anchor': 'middle' });
   const pkt = s('g', { class: 'net-packet-g', visibility: 'hidden' }, halo, dot, tag);
-  pktLayer.append(pkt);
+  // Comet tail: fading dots that follow the packet along its path.
+  const TRAIL = 6;
+  const trail = Array.from({ length: TRAIL }, (_, k) => s('circle', { class: 'net-trail', r: (6 - k * 0.7).toFixed(1), opacity: (0.42 - k * 0.065).toFixed(2), visibility: 'hidden' }));
+  pktLayer.append(...trail, pkt);
 
   container.append(svg);
 
@@ -156,10 +177,11 @@ export function NetworkView(container: HTMLElement, ctx: ViewCtx): () => void {
       i = st.index;
       prog = 1;
     }
-    linkEls.forEach((l) => l.classList.remove('is-hot'));
-    nodeEls.forEach((g) => g.classList.remove('is-src', 'is-dst'));
+    linkEls.forEach((l) => l.classList.remove('is-hot', 'is-rev'));
+    nodeEls.forEach((g) => g.classList.remove('is-src', 'is-dst', 'is-arrived'));
     if (i < 0) {
       pkt.setAttribute('visibility', 'hidden');
+      trail.forEach((c) => c.setAttribute('visibility', 'hidden'));
       return;
     }
     const pk = p.packets[i];
@@ -172,9 +194,25 @@ export function NetworkView(container: HTMLElement, ctx: ViewCtx): () => void {
     pkt.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)})`);
     tag.textContent = pk.proto;
     tag.setAttribute('y', '-14');
-    for (let k = 0; k < path.length - 1; k++) linkEls.get(key(path[k], path[k + 1]))?.classList.add('is-hot');
+    trail.forEach((c, k) => {
+      const f = prog - (k + 1) * 0.035;
+      const show = prog < 1 && f > 0;
+      c.setAttribute('visibility', show ? 'visible' : 'hidden');
+      if (show) {
+        const [tx, ty] = along(pts, f);
+        c.setAttribute('cx', tx.toFixed(1));
+        c.setAttribute('cy', ty.toFixed(1));
+      }
+    });
+    for (let k = 0; k < path.length - 1; k++) {
+      const el = linkEls.get(key(path[k], path[k + 1]));
+      el?.classList.add('is-hot');
+      // Lines are drawn from the smaller id to the larger one; the dash flow follows the packet.
+      if (el && linkDir.get(el) !== path[k]) el.classList.add('is-rev');
+    }
     nodeEls.get(pk.from)?.classList.add('is-src');
     nodeEls.get(pk.to)?.classList.add('is-dst');
+    if (prog >= 1) nodeEls.get(pk.to)?.classList.add('is-arrived');
   };
 
   draw();

@@ -1,7 +1,8 @@
 // App shell: header, protocol drawer, search palette, main grid of views, player bar.
 import { Player, SPEEDS } from './core/player';
-import { hashFor, navigate, onRoute, parseHash } from './core/router';
+import { hashFor, navigate, onRoute, parseHash, parseMsg, replaceHash } from './core/router';
 import { safeStorage, Signal } from './core/store';
+import { exampleFor } from './examples';
 import { detectLocale } from './i18n/detect';
 import { caps, locale, onLocaleChange, setLocale, t } from './i18n/i18n';
 import { LOCALES } from './i18n/locales';
@@ -10,23 +11,39 @@ import { PROTOCOLS, byId, searchProtocols } from './protocols';
 import { FAMILIES } from './protocols/types';
 import { Button, Dialog, IconButton, Menu, Panel, SegmentedControl, setButton } from './ui/components';
 import { clear, h, svgFromString } from './ui/dom';
+import { ExampleView } from './views/ExampleView';
+import { Narration, hasNarration } from './views/Narration';
 import { NetworkView } from './views/NetworkView';
 import { OverviewPanel } from './views/OverviewPanel';
+import { PacketDetail, type DetailHandle } from './views/PacketDetail';
 import { PacketTable } from './views/PacketTable';
 import { SequenceView } from './views/SequenceView';
 import { StageBar } from './views/StageBar';
+import { StepsView } from './views/StepsView';
 import type { ViewCtx } from './views/context';
 
-type View = 'network' | 'sequence';
+type View = 'network' | 'sequence' | 'steps';
+const VIEWS: View[] = ['network', 'sequence', 'steps'];
 type Theme = 'dark' | 'light';
 
-const DEFAULT_ID = 'http';
+const DEFAULT_ID = 'llm-api';
 const REPO_URL = '';
 
 
 export async function startApp(root: HTMLElement): Promise<void> {
   const protocolId = new Signal<string>(byId(parseHash(location.hash) ?? '')?.id ?? DEFAULT_ID);
-  const view = new Signal<View>((safeStorage.get('pe.view') as View) === 'sequence' ? 'sequence' : 'network');
+  const savedView = safeStorage.get('pe.view') as View;
+  const view = new Signal<View>(VIEWS.includes(savedView) ? savedView : 'network');
+  /** Packet detail open? Its message is the player's focus; the URL carries it as ?msg=<n>. */
+  const detailOpen = new Signal<boolean>(false);
+  /** "Real example" switch: shows a concrete run next to the diagram (entries that have one). */
+  const exampleOn = new Signal<boolean>(safeStorage.get('pe.example') === '1');
+  exampleOn.sub((v) => safeStorage.set('pe.example', v ? '1' : '0'));
+  /** Presentation mode: only the stages and the diagram, for a projector. Not remembered. */
+  const presenting = new Signal<boolean>(false);
+  presenting.sub((v) => document.documentElement.classList.toggle('is-present', v));
+  /** True when we added the ?msg history entry ourselves, so closing can go back instead of adding one. */
+  let pushedDetail = false;
   const savedTheme = safeStorage.get('pe.theme');
   const theme = new Signal<Theme>(
     savedTheme === 'light' || savedTheme === 'dark'
@@ -56,12 +73,23 @@ export async function startApp(root: HTMLElement): Promise<void> {
     clear(root);
     const proto = byId(protocolId.get())!;
     document.title = `${proto.short} · ${t('app.title')}`;
-    const ctx: ViewCtx = { protocol: proto, player };
+    const ctx: ViewCtx = {
+      protocol: proto,
+      player,
+      // In-program steps (no network) have no packets to dissect: a click only moves the player.
+      openDetail: proto.local ? undefined : (i) => {
+        player.seek(i);
+        if (!detailOpen.get()) pushedDetail = true;
+        navigate(proto.id, i);
+      },
+    };
+    const example = exampleFor(proto);
 
     // Drawer listing every protocol by family.
     const drawer = Dialog(t('ui.menu'), 'drawer');
     const drawerList = h('nav', { class: 'drawer-nav', 'aria-label': t('ui.menu') });
-    for (const fam of FAMILIES) {
+    // AI comes first: it is the focus of the lessons.
+    for (const fam of ['ai' as const, ...FAMILIES.filter((f) => f !== 'ai')]) {
       const items = PROTOCOLS.filter((p) => p.family === fam);
       if (!items.length) continue;
       const group = h('div', { class: 'drawer-group' }, h('h3', { class: 'drawer-fam' }, caps(t(`fam.${fam}`))));
@@ -170,6 +198,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
         h('span', { class: 'brand-text' }, h('span', { class: 'brand-a' }, caps(t('app.title').split(' ')[0] ?? '')), ' ', h('em', { class: 'brand-b' }, caps(t('app.title').split(' ').slice(1).join(' '))))),
       searchBtn,
       h('div', { class: 'top-spacer' }),
+      IconButton({ label: t('ui.present'), icon: 'expand', onClick: () => presenting.set(!presenting.get()), className: 'present-btn' }),
       langMenu.el,
       themeCtl.el,
     );
@@ -180,23 +209,53 @@ export async function startApp(root: HTMLElement): Promise<void> {
       [
         { value: 'network', label: caps(t('ui.network')), icon: 'network' },
         { value: 'sequence', label: caps(t('ui.sequence')), icon: 'sequence' },
+        { value: 'steps', label: caps(t('ui.steps')), icon: 'list' },
       ],
       view.get(),
       (v) => view.set(v),
-      `${t('ui.network')} / ${t('ui.sequence')}`,
+      `${t('ui.network')} / ${t('ui.sequence')} / ${t('ui.steps')}`,
     );
     const diagram = Panel('', { className: 'panel-diagram' });
     diagram.head.prepend(viewSeg.el);
-    const diagramBody = diagram.body;
+    // Diagram panel = [ view + narration | real example ].
+    const diagramBody = h('div', { class: 'diagram-body' });
+    const narrHost = h('div', { class: 'narr-host' });
+    const exHost = h('div', { class: 'diagram-ex', hidden: true });
+    diagram.body.classList.add('diagram-wrap');
+    diagram.body.append(h('div', { class: 'diagram-col' }, diagramBody, narrHost), exHost);
+    if (hasNarration(ctx)) cleanups.push(Narration(narrHost, ctx));
     let viewCleanup = () => {};
     const mountView = () => {
       viewCleanup();
       clear(diagramBody);
-      diagramBody.className = `panel-body diagram-body is-${view.get()}`;
-      viewCleanup = view.get() === 'network' ? NetworkView(diagramBody, ctx) : SequenceView(diagramBody, ctx);
+      diagramBody.className = `diagram-body is-${view.get()}`;
+      const v = view.get();
+      viewCleanup = v === 'network' ? NetworkView(diagramBody, ctx) : v === 'sequence' ? SequenceView(diagramBody, ctx) : StepsView(diagramBody, ctx);
     };
     mountView();
     cleanups.push(() => viewCleanup());
+
+    // Real example switch (only where an example exists).
+    if (example) {
+      const sw = h('button', { type: 'button', class: 'switch', role: 'switch', 'aria-checked': 'false', 'data-tip': t('ex.hint') },
+        h('span', { class: 'switch-track', 'aria-hidden': 'true' }, h('span', { class: 'switch-knob' })),
+        h('span', { class: 'switch-label' }, caps(t('ex.toggle'))));
+      sw.addEventListener('click', () => exampleOn.set(!exampleOn.get()));
+      diagram.head.append(sw);
+      let exCleanup = () => {};
+      const syncExample = () => {
+        const on = exampleOn.get();
+        sw.setAttribute('aria-checked', String(on));
+        diagram.el.classList.toggle('has-example', on);
+        exHost.hidden = !on;
+        exCleanup();
+        exCleanup = () => {};
+        clear(exHost);
+        if (on) exCleanup = ExampleView(exHost, ctx, example);
+      };
+      syncExample();
+      cleanups.push(exampleOn.sub(syncExample), () => exCleanup());
+    }
     cleanups.push(view.sub((v) => {
       safeStorage.set('pe.view', v);
       viewSeg.set(v);
@@ -211,6 +270,43 @@ export async function startApp(root: HTMLElement): Promise<void> {
     cleanups.push(PacketTable(packets.body, ctx));
 
     const main = h('main', { class: 'main', id: 'main', tabindex: -1 }, stageHost, h('div', { class: 'grid' }, diagram.el, overview.el), packets.el);
+
+    // Packet detail: replaces the main area while open.
+    const detailHost = h('div', { class: 'detail-host', hidden: true });
+    let detail: DetailHandle | null = null;
+    let returnFocus: HTMLElement | null = null;
+    const closeDetail = () => {
+      if (pushedDetail) {
+        pushedDetail = false;
+        history.back(); // hashchange → route handler closes the view
+      } else {
+        replaceHash(proto.id);
+        detailOpen.set(false);
+      }
+    };
+    const syncDetail = (focus: boolean) => {
+      const open = detailOpen.get();
+      if (open && !detail) {
+        returnFocus = focus ? (document.activeElement as HTMLElement | null) : null;
+        detail = PacketDetail(ctx, closeDetail, (i) => replaceHash(proto.id, i));
+        detailHost.append(detail.el);
+        detailHost.hidden = false;
+        main.hidden = true;
+        if (focus) detail.focus();
+      } else if (!open && detail) {
+        detail.destroy();
+        detail.el.remove();
+        detail = null;
+        detailHost.hidden = true;
+        main.hidden = false;
+        const back = returnFocus && document.contains(returnFocus) ? returnFocus : null;
+        returnFocus = null;
+        back?.focus();
+      }
+    };
+    syncDetail(false);
+    cleanups.push(detailOpen.sub(() => syncDetail(true)));
+    cleanups.push(() => detail?.destroy());
 
     // Player bar.
     const speedMenu = Menu('', (v) => player.setSpeed(Number(v)));
@@ -269,12 +365,12 @@ export async function startApp(root: HTMLElement): Promise<void> {
 
     root.append(
       h('button', { type: 'button', class: 'skip', onclick: () => main.focus() }, t('ui.skip')),
-      header, main, bar, drawer.el, palette.el,
+      header, main, detailHost, bar, drawer.el, palette.el,
     );
 
     // Keyboard shortcuts.
     const onKey = (e: KeyboardEvent) => {
-      const tgt = e.target as HTMLElement;
+      const tgt = e.target instanceof Element ? e.target : document.body;
       const typing = tgt.closest('input, textarea, select, [contenteditable="true"]');
       if (palette.el.open || drawer.el.open) return;
       if ((e.key === '/' && !typing) || (e.key.toLowerCase() === 'k' && (e.ctrlKey || e.metaKey))) {
@@ -283,7 +379,19 @@ export async function startApp(root: HTMLElement): Promise<void> {
         return;
       }
       if (typing || e.altKey || e.ctrlKey || e.metaKey) return;
-      if (e.key === ' ' && !tgt.closest('button, a, [role="radio"], tr')) {
+      if (e.key.toLowerCase() === 'e' && example && !detailOpen.get()) {
+        exampleOn.set(!exampleOn.get());
+        return;
+      }
+      if (e.key.toLowerCase() === 'p') {
+        presenting.set(!presenting.get());
+        return;
+      }
+      if (e.key === 'Escape' && presenting.get() && !detailOpen.get()) {
+        presenting.set(false);
+        return;
+      }
+      if (e.key === ' ' && !tgt.closest('button, a, [role="radio"], [role="button"], tr')) {
         e.preventDefault();
         player.toggle();
       } else if (e.key === 'ArrowRight' && !tgt.closest('[role="radiogroup"], [role="menu"]')) {
@@ -296,6 +404,20 @@ export async function startApp(root: HTMLElement): Promise<void> {
     cleanups.push(() => document.removeEventListener('keydown', onKey));
   };
 
+  const applyMsg = () => {
+    const msg = parseMsg(location.hash);
+    const proto = byId(protocolId.get())!;
+    const count = proto.packets.length;
+    if (msg !== null && msg < count && !proto.local) {
+      if (player.get().index !== msg) player.seek(msg);
+      detailOpen.set(true);
+    } else {
+      pushedDetail = false;
+      detailOpen.set(false);
+    }
+  };
+
+  applyMsg();
   render();
   onLocaleChange(render);
 
@@ -306,7 +428,9 @@ export async function startApp(root: HTMLElement): Promise<void> {
   });
   onRoute((id) => {
     const p = id ? byId(id) : undefined;
-    if (p) protocolId.set(p.id);
-    else if (location.hash) navigate(protocolId.get());
+    if (p) {
+      protocolId.set(p.id);
+      applyMsg();
+    } else if (location.hash) navigate(protocolId.get());
   });
 }

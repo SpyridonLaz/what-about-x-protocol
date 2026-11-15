@@ -13,9 +13,9 @@ export const FAMILIES: Family[] = [
 export type NodeKind =
   | 'laptop' | 'phone' | 'desktop' | 'router' | 'switch' | 'ap' | 'cloud' | 'server' | 'dns'
   | 'mail' | 'db' | 'files' | 'firewall' | 'proxy' | 'vpn' | 'clock' | 'auth' | 'plc'
-  | 'llm' | 'agent' | 'tool' | 'vectordb' | 'app';
+  | 'llm' | 'agent' | 'tool' | 'vectordb' | 'app' | 'tokens' | 'layers' | 'sampler';
 
-export type Layer = 'l7' | 'l6' | 'l5' | 'l4' | 'l3' | 'l2' | 'l7p' | 'mixed';
+export type Layer = 'l7' | 'l6' | 'l5' | 'l4' | 'l3' | 'l2' | 'l7p' | 'mixed' | 'model';
 
 export interface PNode {
   id: string;
@@ -52,6 +52,17 @@ export interface ProtocolText {
   format: string;
   /** One [title, subtitle] pair per stage. */
   stages: [string, string][];
+  /** Plain-language explanation of each message, one per packet (same order). Shown as the narration. */
+  notes?: string[];
+  /** Key ideas to remember (shown in the overview). */
+  ideas?: string[];
+}
+
+/** A labelled frame around a group of nodes (who runs what), e.g. "Your side" / "Model provider". */
+export interface Zone {
+  /** Key in the `zone.*` dictionary (translated). */
+  label: string;
+  nodes: string[];
 }
 
 export interface Protocol {
@@ -71,6 +82,9 @@ export interface Protocol {
   links: [string, string][];
   packets: Packet[];
   text: ProtocolText;
+  zones?: Zone[];
+  /** True when the steps happen inside one program (no network traffic), so there are no packets to dissect. */
+  local?: boolean;
   /** Extra search terms (not shown). */
   tags?: string[];
 }

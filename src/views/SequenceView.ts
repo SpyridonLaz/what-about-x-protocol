@@ -38,20 +38,29 @@ export function SequenceView(container: HTMLElement, ctx: ViewCtx): () => void {
     const dir = x2 >= x1 ? 1 : -1;
     const xEnd = x2 - 8 * dir;
     const len = Math.abs(xEnd - x1);
-    const g = s('g', { class: 'seq-msg' });
+    const label = `${pk.proto} · ${pk.info}`;
+    const g = s('g', { class: 'seq-msg', tabindex: 0, role: 'button', 'aria-label': `${t(ctx.openDetail ? 'ui.openDetails' : 'ui.messageNo', { n: i + 1 })}: ${label}` });
     g.style.setProperty('--pkt', famVar(packetFamily(pk.proto, p)));
     const line = s('line', { class: 'seq-line', x1, y1: y, x2: xEnd, y2: y });
     line.style.strokeDasharray = `${len}`;
     const head = s('path', { class: 'seq-head-arrow', d: `M${x2},${y} l${-9 * dir},-5 l0,10 z` });
     const maxChars = Math.max(12, Math.floor((Math.max(len, COL) - 16) / 6.6));
-    const label = `${pk.proto} · ${pk.info}`;
     const short = label.length > maxChars ? label.slice(0, maxChars - 1) + '…' : label;
     const tx = (x1 + x2) / 2;
     const text = s('text', { class: 'seq-text', x: tx, y: y - 6, 'text-anchor': 'middle' }, short);
     const title = s('title', {}, label);
+    // A wide invisible hit area, so the thin arrow is easy to click.
+    const hit = s('rect', { class: 'seq-hit', x: Math.min(x1, x2), y: y - ROW / 2 + 2, width: Math.max(Math.abs(x2 - x1), 24), height: ROW - 4 });
     const time = s('text', { class: 'seq-time', x: 8, y: y + 4 }, formatTime(pk.t, locale()));
-    g.append(title, line, head, text, time);
-    g.addEventListener('click', () => ctx.player.seek(i));
+    g.append(title, hit, line, head, text, time);
+    const open = () => (ctx.openDetail ? ctx.openDetail(i) : ctx.player.seek(i));
+    g.addEventListener('click', open);
+    g.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        open();
+      }
+    });
     svg.append(g);
     return { g, line, len, y };
   });

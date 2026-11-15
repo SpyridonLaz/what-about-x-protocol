@@ -12,3 +12,6 @@ Works locally but **not** in production:
 - Pages has no SPA rewrites → never use history-API routes.
 
 Destructive or production-facing commands are confirmed with the user every time.
+
+## Local preview with Laravel Herd
+Herd serves this folder as `http://protocol-explorer.test`, but it can't run TypeScript (it sends `.ts` as `video/mp2t`, so the page stays blank). Herd's static driver serves `public/` when it exists, so run `npm run build:herd` (builds into `public/`, git-ignored) and reload. Rebuild after every change; for live reload use `npm run dev` (http://localhost:5173) instead.

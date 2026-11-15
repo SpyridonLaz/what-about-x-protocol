@@ -30,7 +30,7 @@ export function PacketTable(container: HTMLElement, ctx: ViewCtx): () => void {
     { key: 'info', label: t('col.info'), cell: (r) => r.info, className: 'c-info' },
     { key: 'size', label: t('col.size'), cell: (r) => formatSize(r.size, loc), className: 'c-size' },
   ];
-  const table = DataTable(cols, (i) => ctx.player.seek(i), t('ui.packets'));
+  const table = DataTable(cols, (i) => (ctx.openDetail ? ctx.openDetail(i) : ctx.player.seek(i)), t('ui.packets'));
   table.setRows(p.packets);
   table.el.querySelector('table')?.setAttribute('dir', 'ltr');
   container.append(table.el);

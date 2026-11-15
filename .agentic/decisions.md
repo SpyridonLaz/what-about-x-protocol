@@ -6,6 +6,7 @@ Never re-propose a rejected or superseded idea without new information.
 | Question | Options |
 |---|---|
 | Who reviews the machine-drafted translations? | **[ship as drafts, invite native-speaker fixes via GitHub issues]** · review before launch |
+| Real examples for the 33 network protocols? | **[later, on request]** · never |
 
 ## Standing
 | Date | Decision | Why |
@@ -22,6 +23,11 @@ Never re-propose a rejected or superseded idea without new information.
 | 2026-11-09 | Look close to the original blueprint style, refined colours, reusable components | User choice |
 | 2026-11-09 | Greek and German text is drafted by the agent | No translators available; marked as drafts in the footer |
 | 2026-11-09 | Packet info lines (wire text like `GET / HTTP/1.1`) are never translated | They show real protocol bytes, as in Wireshark |
+| 2026-11-12 | The site is presented to students; the AI protocols and architectures are the focus. New work goes into the AI entries only until the user says otherwise | User instruction ("don't develop the non-AI technologies yet") |
+| 2026-11-12 | "Real example" is a switch in the diagram panel, available only where an example has been written (the 7 AI entries) | User asked for a toggle that shows a real example inside the presentation window |
+| 2026-11-12 | Real-example content (mock screen text and wire payloads) is never translated; its labels and the narration are | Same rule as packet info lines: it is example data, and it must match the wire text |
+| 2026-11-12 | The site opens on `llm-api` (`DEFAULT_ID` in `src/app.ts`); the brand link goes there too | User choice: AI is the focus of the lessons |
+| 2026-11-12 | `llm-inside` has `local: true`: its messages cannot be opened in the packet dissector | The steps happen inside one program; an Ethernet/IP dissection would teach something false |
 
 ## Superseded
 | Was | Replaced by |

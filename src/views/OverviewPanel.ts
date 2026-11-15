@@ -28,10 +28,13 @@ export function OverviewPanel(container: HTMLElement, ctx: ViewCtx): () => void 
     p.kind === 'pattern' ? Badge(caps(t('ui.pattern')), 'warn') : Badge(caps(t('ui.active')), 'ok'),
     Badge(caps(t(`fam.${p.family}`)), 'family', p.family));
 
+  const ideas = (p.text.ideas ?? []).map((_, i) => h('li', {}, t(`p.${p.id}.k${i + 1}`)));
+
   container.append(
     head,
     h('h3', { class: 'ov-name' }, t(`p.${p.id}.name`)),
     h('p', { class: 'ov-desc' }, t(`p.${p.id}.desc`)),
+    ...(ideas.length ? [h('h4', { class: 'ov-sub ov-sub-ideas' }, caps(t('ui.keyIdeas'))), h('ul', { class: 'ov-ideas' }, ideas)] : []),
     KeyValueGrid(rows),
     h('h4', { class: 'ov-sub' }, caps(t('ui.packetFlow'))),
     chips,

@@ -4,6 +4,8 @@ import type { Packet, Protocol } from '../protocols/types';
 export interface ViewCtx {
   protocol: Protocol;
   player: Player;
+  /** Open the packet detail view at a message (seeks the player there). */
+  openDetail?: (index: number) => void;
 }
 
 /** Packet that is "current" for highlighting: the one in flight, else the last one that arrived. */

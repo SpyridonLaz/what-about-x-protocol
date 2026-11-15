@@ -6,7 +6,7 @@ import type { Protocol } from '../src/protocols/types';
 const clone = (p: Protocol): Protocol => structuredClone(p);
 
 describe('catalogue', () => {
-  it('has 37 protocols', () => expect(PROTOCOLS).toHaveLength(37));
+  it('has 40 protocols', () => expect(PROTOCOLS).toHaveLength(40));
   it('ids are unique', () => expect(new Set(PROTOCOLS.map((p) => p.id)).size).toBe(PROTOCOLS.length));
   it('passes validateAll', () => expect(validateAll(PROTOCOLS)).toEqual([]));
   it('byId finds and misses', () => {

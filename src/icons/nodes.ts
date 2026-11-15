@@ -173,6 +173,13 @@ const ICONS: Record<NodeKind, () => string> = {
         `<circle class="ic-a" cx="${f(k.t3[0] + 3)}" cy="${f(k.t3[1] + 3)}" r="1.1"/>`;
     })() +
     `<path class="ic-ai" d="M45,10 l1.5,4 l4,1.5 l-4,1.5 l-1.5,4 l-1.5,-4 l-4,-1.5 l4,-1.5 Z"/>`,
+  tokens: () =>
+    shadow + box(21, 43, 13, 13, 9) + box(43, 43, 13, 13, 9) + box(32, 52, 13, 13, 9, 'ic-ai'),
+  layers: () =>
+    shadow + box(32, 52, 28, 28, 5) + box(32, 42, 28, 28, 5) + box(32, 32, 28, 28, 5, 'ic-ai'),
+  sampler: () =>
+    shadow + box(32, 52, 26, 26, 8) +
+    `<rect class="ic-a" x="21" y="22" width="5.5" height="9"/><rect class="ic-ai" x="29.2" y="10" width="5.5" height="21"/><rect class="ic-a" x="37.5" y="25" width="5.5" height="6"/>`,
 };
 
 export function nodeIcon(kind: NodeKind): string {

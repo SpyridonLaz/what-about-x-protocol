@@ -5,3 +5,4 @@ dist/
 translations/
 .claude/settings.local.json
 .agentic/logs/
+public/

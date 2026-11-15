@@ -1,4 +1,5 @@
 // Structural checks for protocol scenarios. Used by scripts/check-content.ts and tests.
+import { EXAMPLES, exampleFor, validateExample } from '../examples';
 import { EN_UI } from '../i18n/en';
 import { NODE_KINDS } from '../icons/nodes';
 import { FAMILIES, type Protocol } from './types';
@@ -51,6 +52,23 @@ export function validateProtocol(p: Protocol): string[] {
   });
   for (let s = 0; s < stageCount; s++) if (!seen.has(s)) at(`stage ${s + 1} has no packets`);
 
+  // Narration: one note per packet, none empty.
+  const notes = p.text.notes;
+  if (notes) {
+    if (notes.length !== p.packets.length) at(`${notes.length} notes for ${p.packets.length} packets`);
+    notes.forEach((note, i) => {
+      if (!note.trim()) at(`note ${i + 1} is empty`);
+    });
+  }
+  (p.text.ideas ?? []).forEach((idea, i) => {
+    if (!idea.trim()) at(`key idea ${i + 1} is empty`);
+  });
+  for (const z of p.zones ?? []) {
+    if (!(`zone.${z.label}` in EN_UI)) at(`zone "${z.label}" has no zone.${z.label} string`);
+    if (!z.nodes.length) at(`zone "${z.label}" has no nodes`);
+    for (const id of z.nodes) if (!ids.has(id)) at(`zone "${z.label}" references a missing node "${id}"`);
+  }
+
   // Every node that sends or receives must be reachable over links (so the diagram can draw the path).
   const used = new Set(p.packets.flatMap((pk) => [pk.from, pk.to]));
   const adj = new Map<string, string[]>();
@@ -70,6 +88,11 @@ export function validateProtocol(p: Protocol): string[] {
 
 export function validateAll(list: Protocol[]): string[] {
   const errs = list.flatMap(validateProtocol);
+  for (const p of list) {
+    const ex = exampleFor(p);
+    if (ex) errs.push(...validateExample(p, ex));
+  }
+  for (const id of Object.keys(EXAMPLES)) if (!list.some((p) => p.id === id)) errs.push(`[${id}] example for an unknown protocol`);
   const ids = new Set<string>();
   for (const p of list) {
     if (ids.has(p.id)) errs.push(`[${p.id}] duplicate protocol id`);

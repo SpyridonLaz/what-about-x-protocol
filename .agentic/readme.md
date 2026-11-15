@@ -4,7 +4,7 @@ Interactive website that teaches how internet and AI protocols work, step by ste
 
 ## Goal
 A free, fast, multilingual site where anyone can pick a protocol and watch it run: who talks to whom, which packets flow, in what order and why.
-**Success looks like:** all 37 entries live on GitHub Pages in English, Greek and German, working on phone and desktop, with the AI section (MCP, A2A, LLM API, RAG) as the part the original didn't have.
+**Success looks like:** all 40 entries live on GitHub Pages in English, Greek and German, working on phone and desktop, with the AI section (MCP, A2A, LLM API, RAG, agent architectures) as the part the original didn't have.
 
 ## Who it's for
 Students, developers, IT/security learners and curious people. The UI language follows the visitor's system language.
@@ -22,7 +22,8 @@ Students, developers, IT/security learners and curious people. The UI language f
 | Languages | English, Greek, German; auto-detected, English fallback | must |
 | Theme | Dark blueprint (default) + light | must |
 | 33 network protocols | HTTP … WebRTC (list in `knowledge-model.md`) | must |
-| AI flows | MCP, A2A, LLM API + tool calling, RAG (pattern) | must |
+| AI flows | MCP, A2A, LLM API + tool calling, RAG, agent loop, orchestrator + subagents, inside an LLM | must |
+| AI lessons | Narration per message, key ideas, Real example switch (mock screen + full messages), presentation mode | must |
 
 **Out of scope:** capturing real traffic, accounts/logins, a backend, user-generated scenarios.
 
